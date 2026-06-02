@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brix — Stop Leaking Revenue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #04060F;
+    --bg2: #080C1A;
+    --bg3: #0C1128;
+    --cyan: #00D4FF;
+    --cyan-dim: rgba(0, 212, 255, 0.12);
+    --cyan-glow: rgba(0, 212, 255, 0.25);
+    --purple: #8B5CF6;
+    --purple-dim: rgba(139, 92, 246, 0.12);
+    --text: #EEF0F8;
+    --muted: #7A7D96;
+    --border: rgba(255,255,255,0.07);
+    --border-bright: rgba(0, 212, 255, 0.3);
+    --card: rgba(255,255,255,0.03);
+    --card-hover: rgba(255,255,255,0.06);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-orb-1 { width: 600px; height: 600px; background: rgba(0,212,255,0.06); top: -200px; right: -100px; }
+  .glow-orb-2 { width: 500px; height: 500px; background: rgba(139,92,246,0.07); bottom: 20%; left: -150px; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+  section { position: relative; z-index: 1; }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 20px 0;
+    border-bottom: 1px solid transparent;
+    transition: all 0.3s;
+  }
+  nav.scrolled {
+    background: rgba(4,6,15,0.88);
+    backdrop-filter: blur(20px);
+    border-bottom-color: var(--border);
+    padding: 14px 0;
+  }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+
+  /* LOGO */
+  .logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .logo-mark {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    width: 30px;
+    height: 30px;
+  }
+  .logo-mark span {
+    border-radius: 3px;
+    display: block;
+  }
+  .lm-tl { background: #00D4FF; }
+  .lm-tr { background: rgba(0,212,255,0.35); }
+  .lm-bl { background: rgba(0,212,255,0.35); }
+  .lm-br { background: #00D4FF; }
+  .logo-word {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .logo-word .dot { color: var(--cyan); }
+
+  .nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--text); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 24px;
+    border-radius: 6px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+  }
+  .btn-primary { background: var(--cyan); color: #04060F; }
+  .btn-primary:hover {
+    background: #33DDFF;
+    box-shadow: 0 0 28px rgba(0,212,255,0.4);
+    transform: translateY(-1px);
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border-bright);
+  }
+  .btn-outline:hover {
+    background: var(--cyan-dim);
+    box-shadow: 0 0 20px rgba(0,212,255,0.15);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--cyan);
+    border: 1px solid rgba(0,212,255,0.2);
+    font-size: 13px;
+    padding: 8px 18px;
+  }
+  .btn-ghost:hover { background: var(--cyan-dim); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 140px 0 100px;
+  }
+  .hero-content { max-width: 780px; }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--cyan-dim);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 100px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cyan);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+  .badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(44px, 7vw, 80px);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -2px;
+    margin-bottom: 28px;
+  }
+  h1 .accent { color: var(--cyan); }
+  h1 .accent2 { color: var(--purple); }
+
+  .hero-sub {
+    font-size: 19px;
+    color: var(--muted);
+    line-height: 1.65;
+    max-width: 580px;
+    margin-bottom: 44px;
+  }
+  .hero-sub strong { color: var(--text); font-weight: 500; }
+
+  .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 28px; }
+
+  .hero-note { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .hero-note::before { content: '✓'; color: var(--cyan); font-weight: 700; }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 620px;
+    margin-top: 52px;
+  }
+  .stat-cell {
+    background: var(--bg2);
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--cyan);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .stat-label { font-size: 12px; color: var(--muted); line-height: 1.3; }
+
+  /* SECTION STYLES */
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 16px;
+  }
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(32px, 4.5vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    margin-bottom: 20px;
+  }
+  .section-desc {
+    font-size: 17px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 560px;
+  }
+
+  /* PROBLEM */
+  .problem { padding: 100px 0; }
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+    margin-top: 64px;
+  }
+  .pain-list { display: flex; flex-direction: column; gap: 16px; }
+  .pain-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: all 0.3s;
+  }
+  .pain-item:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.12); }
+  .pain-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: rgba(239,68,68,0.12);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+  }
+  .pain-text strong { display: block; font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
+  .pain-text span { font-size: 13px; color: var(--muted); }
+
+  .problem-right h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 20px;
+  }
+  .problem-right h3 em { color: var(--cyan); font-style: normal; }
+
+  /* SERVICES */
+  .services { padding: 100px 0; }
+  .services-header { text-align: center; margin-bottom: 64px; }
+  .services-header .section-desc { margin: 0 auto; }
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .service-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 28px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+  }
+  .service-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .service-card:hover {
+    background: var(--card-hover);
+    border-color: rgba(0,212,255,0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .service-card:hover::before { opacity: 1; }
+  .service-card.featured {
+    border-color: rgba(0,212,255,0.25);
+    background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(139,92,246,0.05));
+  }
+  .service-card.featured::before { opacity: 0.5; }
+  .service-step {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .service-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+  .service-icon.cyan { background: var(--cyan-dim); }
+  .service-icon.purple { background: var(--purple-dim); }
+  .service-icon.gold { background: rgba(251,191,36,0.12); }
+  .service-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+  }
+  .service-card p { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 24px; flex: 1; }
+  .service-price {
+    font-family: 'Space Mono', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 20px;
+    display: block;
+  }
+  .service-price .price-sub { font-size: 13px; color: var(--muted); font-family: 'Outfit', sans-serif; font-weight: 400; display: block; margin-top: 2px; }
+  .service-features { list-style: none; margin-bottom: 28px; display: flex; flex-direction: column; gap: 10px; }
+  .service-features li {
+    font-size: 13px;
+    color: var(--muted);
+    padding-left: 20px;
+    position: relative;
+  }
+  .service-features li::before { content: '→'; position: absolute; left: 0; color: var(--cyan); font-size: 12px; }
+
+  /* HOW IT WORKS */
+  .how { padding: 100px 0; background: var(--bg2); }
+  .how-inner { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .how-header { padding: 48px 48px 40px; border-bottom: 1px solid var(--border); }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .step {
+    padding: 36px 28px;
+    border-right: 1px solid var(--border);
+    position: relative;
+    transition: background 0.3s;
+  }
+  .step:last-child { border-right: none; }
+  .step:hover { background: var(--card); }
+  .step-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .step-icon { font-size: 28px; margin-bottom: 16px; display: block; }
+  .step h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .step p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .step-connector {
+    position: absolute;
+    top: 36px; right: -12px;
+    width: 24px; height: 24px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    color: var(--cyan);
+    z-index: 1;
+  }
+  .step:last-child .step-connector { display: none; }
+
+  /* RETAINER */
+  .retainer { padding: 100px 0; }
+  .retainer-header { text-align: center; margin-bottom: 64px; }
+  .retainer-header .section-desc { margin: 0 auto; }
+  .retainer-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .retainer-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .tier-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 22px;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .tier-card:hover {
+    border-color: rgba(0,212,255,0.2);
+    background: var(--card-hover);
+    transform: translateY(-2px);
+  }
+  .tier-card.popular {
+    border-color: rgba(0,212,255,0.3);
+    background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(139,92,246,0.03));
+  }
+  .popular-badge {
+    position: absolute;
+    top: -10px; left: 50%; transform: translateX(-50%);
+    background: var(--cyan);
+    color: #04060F;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 12px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  .tier-freq {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .tier-price {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--cyan);
+    margin-bottom: 10px;
+  }
+  .tier-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* CTA / CONTACT */
+  .cta-section { padding: 100px 0; text-align: center; }
+  .cta-box {
+    background: var(--bg2);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 20px;
+    padding: 72px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  }
+  .cta-box::after {
+    content: '';
+    position: absolute;
+    top: -100px; left: 50%; transform: translateX(-50%);
+    width: 400px; height: 300px;
+    background: radial-gradient(circle, rgba(0,212,255,0.07), transparent 70%);
+    pointer-events: none;
+  }
+  .cta-box h2 { margin-bottom: 16px; }
+  .cta-box p { color: var(--muted); font-size: 17px; max-width: 480px; margin: 0 auto 40px; line-height: 1.65; }
+  .cta-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .cta-note { margin-top: 24px; font-size: 13px; color: var(--muted); }
+
+  /* TRUST */
+  .trust { padding: 60px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .trust-inner { display: flex; align-items: center; justify-content: center; gap: 60px; flex-wrap: wrap; }
+  .trust-item { text-align: center; }
+  .trust-item .t-num { font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800; color: var(--text); display: block; line-height: 1; }
+  .trust-item .t-num span { color: var(--cyan); }
+  .trust-item .t-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .trust-divider { width: 1px; height: 50px; background: var(--border); }
+
+  /* FOOTER */
+  footer { border-top: 1px solid var(--border); padding: 40px 0; }
+  .footer-inner { display: flex; align-items: center; justify-content: space-between; }
+  .footer-copy { font-size: 13px; color: var(--muted); }
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--text); }
+
+  .section-divider { width: 48px; height: 2px; background: var(--cyan); margin: 20px 0; }
+
+  /* REVEAL */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+  .reveal-delay-4 { transition-delay: 0.4s; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .problem-grid { grid-template-columns: 1fr; gap: 40px; }
+    .services-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr 1fr; }
+    .step:nth-child(2) { border-right: none; }
+    .step:nth-child(1), .step:nth-child(2) { border-bottom: 1px solid var(--border); }
+    .retainer-grid, .retainer-row { grid-template-columns: 1fr 1fr; }
+    .nav-links { display: none; }
+    h1 { letter-spacing: -1px; }
+    .hero-stats { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .steps { grid-template-columns: 1fr; }
+    .step { border-right: none; border-bottom: 1px solid var(--border); }
+    .step:last-child { border-bottom: none; }
+    .retainer-grid, .retainer-row { grid-template-columns: 1fr; }
+    .trust-divider { display: none; }
+    .footer-inner { flex-direction: column; gap: 16px; text-align: center; }
+    .cta-box { padding: 48px 24px; }
+    .how-header { padding: 32px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow-orb glow-orb-1"></div>
+<div class="glow-orb glow-orb-2"></div>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="container nav-inner">
+    <a href="#" class="logo-wrap">
+      <div class="logo-mark">
+        <span class="lm-tl"></span>
+        <span class="lm-tr"></span>
+        <span class="lm-bl"></span>
+        <span class="lm-br"></span>
+      </div>
+      <span class="logo-word">BRIX<span class="dot">.</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#services">Services</a></li>
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#retainer">Retainer Plans</a></li>
+    </ul>
+    <a href="mailto:Brix1email@gmail.com" class="btn btn-primary">Get in Touch →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge reveal">
+        <div class="badge-dot"></div>
+        AI Profit Advisor for Small Business
+      </div>
+      <h1 class="reveal reveal-delay-1">
+        Your Business<br>
+        is <span class="accent">Leaking</span><br>
+        Revenue. We Can<br>
+        <span class="accent2">Seal It.</span>
+      </h1>
+      <p class="hero-sub reveal reveal-delay-2">
+        Most small businesses are sitting on <strong>10+ untapped AI automations</strong> that could cut costs, save hours, and increase profit — they just don't know where to look.
+        <br><br>We find them. We rank them. We build them.
+      </p>
+      <div class="hero-ctas reveal reveal-delay-3">
+        <a href="mailto:Brix1email@gmail.com?subject=AI Profit Leak Audit" class="btn btn-primary">Start with a $750 Audit →</a>
+        <a href="#services" class="btn btn-outline">See All Services</a>
+      </div>
+      <div class="reveal reveal-delay-3" style="display:flex; flex-direction:column; gap:8px;">
+        <div class="hero-note">No tech background required — We handle everything end-to-end</div>
+        <div class="hero-note">Results delivered within 5 business days</div>
+        <div class="hero-note">Ranked by ROI — highest impact automations first</div>
+      </div>
+
+      <div class="hero-stats reveal reveal-delay-4">
+        <div class="stat-cell">
+          <span class="stat-num">$18K+</span>
+          <span class="stat-label">Average annual savings<br>identified per audit</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-num">5 Days</span>
+          <span class="stat-label">Audit turnaround<br>time</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-num">10</span>
+          <span class="stat-label">Opportunities<br>ranked by ROI</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST BAR -->
+<div class="trust">
+  <div class="container">
+    <div class="trust-inner">
+      <div class="trust-item">
+        <span class="t-num">10<span>+</span></span>
+        <div class="t-label">Opportunities found per business</div>
+      </div>
+      <div class="trust-divider"></div>
+      <div class="trust-item">
+        <span class="t-num">$<span>750</span></span>
+        <div class="t-label">Flat-rate profit audit</div>
+      </div>
+      <div class="trust-divider"></div>
+      <div class="trust-item">
+        <span class="t-num">100<span>%</span></span>
+        <div class="t-label">Custom to your business</div>
+      </div>
+      <div class="trust-divider"></div>
+      <div class="trust-item">
+        <span class="t-num">0</span>
+        <div class="t-label">Tech skills needed from you</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section class="problem" id="problem">
+  <div class="container">
+    <div class="problem-grid">
+      <div>
+        <div class="section-label reveal">The Problem</div>
+        <h2 class="reveal">What's<br>draining your<br>business?</h2>
+        <div class="section-divider reveal"></div>
+        <div class="pain-list">
+          <div class="pain-item reveal">
+            <div class="pain-icon">⏱</div>
+            <div class="pain-text">
+              <strong>Hours lost to repetitive tasks</strong>
+              <span>Scheduling, follow-ups, invoicing, data entry — all eating your week</span>
+            </div>
+          </div>
+          <div class="pain-item reveal reveal-delay-1">
+            <div class="pain-icon">📉</div>
+            <div class="pain-text">
+              <strong>Leads falling through the cracks</strong>
+              <span>No automated follow-up means money left on the table every single day</span>
+            </div>
+          </div>
+          <div class="pain-item reveal reveal-delay-2">
+            <div class="pain-icon">💸</div>
+            <div class="pain-text">
+              <strong>Paying for what smarter systems could do</strong>
+              <span>Staff hours spent on tasks that modern tools handle in seconds</span>
+            </div>
+          </div>
+          <div class="pain-item reveal reveal-delay-3">
+            <div class="pain-icon">🤯</div>
+            <div class="pain-text">
+              <strong>Overwhelmed by AI hype, no clear path</strong>
+              <span>Everyone's talking about AI — but nobody tells you where to actually start</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="problem-right reveal">
+        <h3>You don't need to <em>figure out AI</em> — you need someone who already has, working for your business.</h3>
+        <p style="color: var(--muted); font-size: 15px; line-height: 1.7; margin-bottom: 28px;">
+          That's exactly what we do. We learn your business inside and out, map every process to an opportunity, rank them by what will make (or save) you the most money, and then we build it.
+        </p>
+        <p style="color: var(--muted); font-size: 15px; line-height: 1.7; margin-bottom: 36px;">
+          No buzzwords. No complexity dumped on you. Just clear, actionable systems that work from day one — and we handle everything.
+        </p>
+        <a href="mailto:Brix1email@gmail.com?subject=AI Profit Leak Audit" class="btn btn-primary">Get Your Audit — $750 →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="services" id="services">
+  <div class="container">
+    <div class="services-header reveal">
+      <div class="section-label">Services</div>
+      <h2>Three ways we work<br>with your business</h2>
+      <p class="section-desc">Start with a deep-dive audit. Pick an automation to build. Keep me on for ongoing strategy. Or all three.</p>
+    </div>
+    <div class="services-grid">
+      <div class="service-card reveal">
+        <div class="service-step">Step 01 — Start Here</div>
+        <div class="service-icon cyan">🔍</div>
+        <h3>AI Profit Leak Audit</h3>
+        <p>You fill out a detailed business questionnaire. We study your operations from top to bottom — processes, tools, costs, and bottlenecks — then hand you a ranked report of your top 10 automation opportunities, ordered by ROI.</p>
+        <span class="service-price">
+          $750
+          <span class="price-sub">One-time flat fee · Results in 5 days</span>
+        </span>
+        <ul class="service-features">
+          <li>Detailed business questionnaire to kick things off</li>
+          <li>10 custom opportunities identified by me</li>
+          <li>Each ranked by estimated ROI</li>
+          <li>Clear, jargon-free action plan</li>
+          <li>30-min results walkthrough call</li>
+        </ul>
+        <a href="mailto:Brix1email@gmail.com?subject=AI Profit Leak Audit" class="btn btn-outline">Email Us to Get Started →</a>
+      </div>
+
+      <div class="service-card featured reveal reveal-delay-1">
+        <div class="service-step">Step 02 — Build It</div>
+        <div class="service-icon purple">⚡</div>
+        <h3>Implementation Sprint</h3>
+        <p>Pick your highest-priority item from the audit and we'll build it — fully customized to your business, tested, and ready to run from day one. You don't lift a finger on the technical side.</p>
+        <span class="service-price">
+          $1,000 – $5,000
+          <span class="price-sub">Priced per project scope · Most take 1–2 weeks</span>
+        </span>
+        <ul class="service-features">
+          <li>Custom-built to your exact workflows</li>
+          <li>Full setup, testing & documentation</li>
+          <li>Handoff with a training walkthrough</li>
+          <li>Your choice from the audit results</li>
+          <li>Post-launch support included</li>
+        </ul>
+        <a href="mailto:Brix1email@gmail.com?subject=Implementation Sprint" class="btn btn-primary">Email Us for a Scope Estimate →</a>
+      </div>
+
+      <div class="service-card reveal reveal-delay-2">
+        <div class="service-step">Step 03 — Scale It</div>
+        <div class="service-icon gold">🏆</div>
+        <h3>Ongoing AI Advisor</h3>
+        <p>Keep us in your corner on a retainer. We continuously identify new opportunities, execute improvements, and make sure your business keeps pulling ahead — at whatever cadence fits you best.</p>
+        <span class="service-price">
+          Custom
+          <span class="price-sub">Weekly · Bi-Weekly · Monthly · Quarterly · Annual</span>
+        </span>
+        <ul class="service-features">
+          <li>Ongoing strategy & opportunity roadmap</li>
+          <li>Regular sessions at your chosen cadence</li>
+          <li>Priority implementation support</li>
+          <li>Continuous scanning for new opportunities</li>
+          <li>Direct access between sessions</li>
+        </ul>
+        <a href="#retainer" class="btn btn-ghost">View Retainer Plans ↓</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="container">
+    <div class="how-inner reveal">
+      <div class="how-header">
+        <div class="section-label">Process</div>
+        <h2 style="margin-bottom:8px;">How it works</h2>
+        <p style="color: var(--muted); font-size: 16px;">From questionnaire to live automation — here's exactly what to expect.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="step-num">01</span>
+          <span class="step-icon">📋</span>
+          <h4>Complete the Questionnaire</h4>
+          <p>After reaching out, you'll receive a detailed business questionnaire. Walk us through your operations, tools, team, and pain points — the more you share, the sharper our audit.</p>
+          <div class="step-connector">→</div>
+        </div>
+        <div class="step">
+          <span class="step-num">02</span>
+          <span class="step-icon">🔬</span>
+          <h4>We Analyze Your Business</h4>
+          <p>We go deep on your questionnaire responses — mapping your processes, spotting inefficiencies, and identifying exactly where automation can drive the most profit for your specific operation.</p>
+          <div class="step-connector">→</div>
+        </div>
+        <div class="step">
+          <span class="step-num">03</span>
+          <span class="step-icon">📊</span>
+          <h4>Audit Delivered</h4>
+          <p>Within 5 business days, you receive your ranked AI Profit Leak Report — 10 opportunities We've identified, with clear ROI estimates, written in plain English.</p>
+          <div class="step-connector">→</div>
+        </div>
+        <div class="step">
+          <span class="step-num">04</span>
+          <span class="step-icon">🚀</span>
+          <h4>We Build & You Scale</h4>
+          <p>Choose what to implement and we'll build it. Then decide if you want us on retainer to keep finding and building new opportunities as your business grows.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RETAINER -->
+<section class="retainer" id="retainer">
+  <div class="container">
+    <div class="retainer-header reveal">
+      <div class="section-label">Retainer Plans</div>
+      <h2>Stay ahead, not behind</h2>
+      <p class="section-desc">Keep us in your corner on an ongoing basis — at whatever cadence makes sense for your business.</p>
+    </div>
+
+    <div class="retainer-grid reveal">
+      <div class="tier-card popular">
+        <div class="popular-badge">Most Popular</div>
+        <div class="tier-freq">Weekly</div>
+        <div class="tier-price">Custom pricing</div>
+        <div class="tier-desc">Ideal for fast-moving businesses. Weekly sessions, constant iteration, and maximum momentum.</div>
+      </div>
+      <div class="tier-card">
+        <div class="tier-freq">Bi-Weekly</div>
+        <div class="tier-price">Custom pricing</div>
+        <div class="tier-desc">A strong rhythm for businesses actively scaling. Bi-weekly check-ins keep implementation moving fast.</div>
+      </div>
+      <div class="tier-card">
+        <div class="tier-freq">Monthly</div>
+        <div class="tier-price">Custom pricing</div>
+        <div class="tier-desc">The sweet spot for most small businesses. One deep monthly session drives consistent forward progress.</div>
+      </div>
+    </div>
+    <div class="retainer-row reveal reveal-delay-1">
+      <div class="tier-card">
+        <div class="tier-freq">Quarterly</div>
+        <div class="tier-price">Custom pricing</div>
+        <div class="tier-desc">Strategic reviews each quarter. Great for businesses with longer operational cycles.</div>
+      </div>
+      <div class="tier-card">
+        <div class="tier-freq">Semi-Annual</div>
+        <div class="tier-price">Custom pricing</div>
+        <div class="tier-desc">A twice-yearly strategy refresh. Low commitment with high strategic impact each session.</div>
+      </div>
+      <div class="tier-card">
+        <div class="tier-freq">Annual</div>
+        <div class="tier-price">Custom pricing</div>
+        <div class="tier-desc">A yearly AI strategy session to plan the road ahead. Perfect paired with a fresh audit each year.</div>
+      </div>
+    </div>
+
+    <p class="reveal" style="text-align:center; color:var(--muted); font-size:14px; margin-top:28px;">
+      All retainer plans include direct access between sessions and priority support. Pricing based on scope and cadence — discussed after your audit.
+    </p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="cta">
+  <div class="container">
+    <div class="cta-box reveal">
+      <div class="section-label" style="justify-content:center; display:flex; margin-bottom:16px;">Ready to Start?</div>
+      <h2>Find out exactly where<br>your business is leaving money on the table.</h2>
+      <p>Email us to kick things off. We'll send you the business questionnaire, review everything personally, and deliver your ranked AI Profit Leak Report within 5 business days.</p>
+      <div class="cta-actions">
+        <a href="mailto:Brix1email@gmail.com?subject=AI Profit Leak Audit — Let's Get Started" class="btn btn-primary" style="font-size:16px; padding:14px 32px;">Email Us to Get Started →</a>
+      </div>
+      <p class="cta-note">Brix1email@gmail.com &nbsp;·&nbsp; Audit results in 5 business days &nbsp;·&nbsp; 100% customized to your business</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div>
+        <a href="#" class="logo-wrap" style="text-decoration:none;">
+          <div class="logo-mark">
+            <span class="lm-tl"></span>
+            <span class="lm-tr"></span>
+            <span class="lm-bl"></span>
+            <span class="lm-br"></span>
+          </div>
+          <span class="logo-word" style="font-size:18px;">BRIX<span class="dot">.</span></span>
+        </a>
+        <p class="footer-copy" style="margin-top:8px;">© 2025 Brix AI Advisory · All rights reserved</p>
+      </div>
+      <div class="footer-links">
+        <a href="#services">Services</a>
+        <a href="#how">Process</a>
+        <a href="#retainer">Retainer Plans</a>
+        <a href="mailto:Brix1email@gmail.com">Contact</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+  });
+
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.hero .reveal').forEach(el => {
+    setTimeout(() => el.classList.add('visible'), 100);
+  });
+  reveals.forEach(el => { if (!el.closest('.hero')) observer.observe(el); });
+
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+  });
+</script>
+</body>
+</html>
