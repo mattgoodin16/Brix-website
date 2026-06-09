@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brix — AI Profit Leak Audit Questionnaire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #04060F;
+    --bg2: #080C1A;
+    --cyan: #00D4FF;
+    --cyan-dim: rgba(0,212,255,0.10);
+    --purple: #8B5CF6;
+    --text: #EEF0F8;
+    --muted: #7A7D96;
+    --border: rgba(255,255,255,0.07);
+    --border-bright: rgba(0,212,255,0.28);
+    --card: rgba(255,255,255,0.03);
+    --input-bg: rgba(255,255,255,0.04);
+    --input-border: rgba(255,255,255,0.1);
+    --input-focus: rgba(0,212,255,0.35);
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow { position: fixed; border-radius: 50%; filter: blur(130px); pointer-events: none; z-index: 0; }
+  .glow-1 { width: 500px; height: 500px; background: rgba(0,212,255,0.05); top: -150px; right: -100px; }
+  .glow-2 { width: 400px; height: 400px; background: rgba(139,92,246,0.06); bottom: 10%; left: -100px; }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 18px 32px;
+    background: rgba(4,6,15,0.80);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo-wrap { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-mark { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 26px; height: 26px; }
+  .logo-mark span { border-radius: 3px; display: block; }
+  .lm-tl { background: #00D4FF; }
+  .lm-tr { background: rgba(0,212,255,0.35); }
+  .lm-bl { background: rgba(0,212,255,0.35); }
+  .lm-br { background: #00D4FF; }
+  .logo-word { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: 0.04em; color: var(--text); }
+  .logo-word .dot { color: var(--cyan); }
+  .nav-back { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .nav-back:hover { color: var(--text); }
+
+  /* LAYOUT */
+  .page { position: relative; z-index: 1; min-height: 100vh; padding: 100px 24px 60px; }
+  .wrapper { max-width: 720px; margin: 0 auto; }
+
+  /* HEADER */
+  .q-header { text-align: center; margin-bottom: 48px; }
+  .q-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--cyan-dim); border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 100px; padding: 5px 14px;
+    font-size: 11px; font-weight: 600; color: var(--cyan);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 20px;
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.8)} }
+  .q-header h1 { font-family: 'Syne', sans-serif; font-size: clamp(28px,5vw,44px); font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+  .q-header p { color: var(--muted); font-size: 15px; max-width: 520px; margin: 0 auto; line-height: 1.65; }
+  .optional-note { display: inline-block; margin-top: 14px; font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; }
+
+  /* PROGRESS */
+  .progress-wrap { margin-bottom: 40px; }
+  .progress-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .progress-label { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--cyan); letter-spacing: 0.08em; text-transform: uppercase; }
+  .progress-count { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); }
+  .progress-bar-bg { width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); border-radius: 2px; transition: width 0.4s ease; }
+
+  /* STEP */
+  .step-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .step-card.active { display: block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+
+  .step-header {
+    padding: 28px 32px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,212,255,0.03);
+  }
+  .step-eyebrow { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--cyan); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+  .step-header h2 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .step-header p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+  .step-body { padding: 28px 32px 32px; }
+
+  /* QUESTION */
+  .q-group { margin-bottom: 28px; }
+  .q-group:last-child { margin-bottom: 0; }
+  .q-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+  .q-hint { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: block; }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  select,
+  textarea {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+  }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.07);
+  }
+  textarea { resize: vertical; min-height: 90px; }
+  select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7D96' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+  select option { background: #0C1128; color: var(--text); }
+
+  /* RADIO & CHECKBOX */
+  .radio-group, .check-group { display: flex; flex-direction: column; gap: 8px; }
+  .radio-group.inline, .check-group.inline { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .radio-opt, .check-opt {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--input-bg); border: 1px solid var(--input-border);
+    border-radius: 8px; padding: 10px 14px;
+    cursor: pointer; font-size: 13px; color: var(--muted);
+    transition: all 0.2s; user-select: none;
+  }
+  .radio-opt:hover, .check-opt:hover { border-color: rgba(0,212,255,0.25); color: var(--text); }
+  .radio-opt input, .check-opt input { display: none; }
+  .radio-opt.selected, .check-opt.selected {
+    border-color: rgba(0,212,255,0.4);
+    background: var(--cyan-dim);
+    color: var(--text);
+  }
+  .radio-dot, .check-box {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--muted);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .check-box { border-radius: 4px; }
+  .radio-opt.selected .radio-dot { border-color: var(--cyan); background: var(--cyan); }
+  .check-opt.selected .check-box { border-color: var(--cyan); background: var(--cyan); }
+  .check-mark { color: #04060F; font-size: 10px; font-weight: 700; display: none; }
+  .check-opt.selected .check-mark { display: block; }
+  .radio-inner { width: 6px; height: 6px; border-radius: 50%; background: #04060F; display: none; }
+  .radio-opt.selected .radio-inner { display: block; }
+
+  /* TWO COL */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:580px){ .two-col{ grid-template-columns: 1fr; } .radio-group.inline{ flex-direction: column; } }
+
+  /* DIVIDER */
+  .q-divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  /* NAV BUTTONS */
+  .step-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 32px 28px;
+    border-top: 1px solid var(--border);
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 24px; border-radius: 7px;
+    font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; text-decoration: none; transition: all 0.2s; border: none;
+  }
+  .btn-primary { background: var(--cyan); color: #04060F; }
+  .btn-primary:hover { background: #33DDFF; box-shadow: 0 0 24px rgba(0,212,255,0.35); transform: translateY(-1px); }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* SUCCESS */
+  .success-screen {
+    display: none;
+    text-align: center;
+    padding: 80px 32px;
+    background: var(--card);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 16px;
+    animation: fadeIn 0.4s ease;
+  }
+  .success-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: var(--cyan-dim); border: 2px solid rgba(0,212,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; margin: 0 auto 28px;
+  }
+  .success-screen h2 { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 14px; }
+  .success-screen p { color: var(--muted); font-size: 16px; max-width: 420px; margin: 0 auto 32px; line-height: 1.65; }
+  .success-screen a { color: var(--cyan); text-decoration: none; font-weight: 600; }
+
+  /* SUBMIT LOADING */
+  .btn-loading { position: relative; }
+  .btn-loading::after { content: ''; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; border: 2px solid rgba(4,6,15,0.3); border-top-color: #04060F; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<nav>
+  <a href="index.html" class="logo-wrap">
+    <div class="logo-mark">
+      <span class="lm-tl"></span><span class="lm-tr"></span>
+      <span class="lm-bl"></span><span class="lm-br"></span>
+    </div>
+    <span class="logo-word">BRIX<span class="dot">.</span></span>
+  </a>
+  <a href="index.html" class="nav-back">← Back to site</a>
+</nav>
+
+<div class="page">
+  <div class="wrapper">
+
+    <div class="q-header">
+      <div class="q-badge"><div class="badge-dot"></div>AI Profit Leak Audit</div>
+      <h1>Tell us about<br>your business</h1>
+      <p>The more detail you share, the sharper and more valuable your audit will be. We'll use your answers to identify your top 10 highest-ROI AI opportunities.</p>
+      <span class="optional-note">✦ All questions are optional — answer what you can</span>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-meta">
+        <span class="progress-label" id="sectionName">About Your Business</span>
+        <span class="progress-count" id="stepCount">Section 1 of 8</span>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar" style="width:12.5%"></div></div>
+    </div>
+
+    <!-- ─── STEP 1: ABOUT YOUR BUSINESS ─── -->
+    <div class="step-card active" data-step="1">
+      <div class="step-header">
+        <div class="step-eyebrow">Section 01</div>
+        <h2>About Your Business</h2>
+        <p>Let's start with the basics. Give us a picture of who you are and what you do.</p>
+      </div>
+      <div class="step-body">
+
+        <div class="two-col">
+          <div class="q-group">
+            <label class="q-label">Business name</label>
+            <input type="text" name="business_name" placeholder="e.g. Rivera Plumbing Co.">
+          </div>
+          <div class="q-group">
+            <label class="q-label">Your name</label>
+            <input type="text" name="owner_name" placeholder="First and last name">
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="q-group">
+            <label class="q-label">Industry / type of business</label>
+            <input type="text" name="industry" placeholder="e.g. Landscaping, Law Firm, Salon">
+          </div>
+          <div class="q-group">
+            <label class="q-label">Years in business</label>
+            <select name="years_in_business">
+              <option value="">Select one</option>
+              <option>Less than 1 year</option>
+              <option>1–2 years</option>
+              <option>3–5 years</option>
+              <option>6–10 years</option>
+              <option>10+ years</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What products or services do you offer?</label>
+          <textarea name="products_services" placeholder="Describe what you sell, what you do, and how you deliver it..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Who is your typical customer?</label>
+          <span class="q-hint">Age, income, location, type of business — anything that describes who buys from you</span>
+          <textarea name="target_customer" placeholder="e.g. Homeowners aged 35–55 in Sonoma County, or small restaurants in Petaluma..."></textarea>
+        </div>
+
+        <div class="two-col">
+          <div class="q-group">
+            <label class="q-label">Approximate annual revenue</label>
+            <select name="annual_revenue">
+              <option value="">Select range</option>
+              <option>Under $50K</option>
+              <option>$50K – $100K</option>
+              <option>$100K – $250K</option>
+              <option>$250K – $500K</option>
+              <option>$500K – $1M</option>
+              <option>$1M+</option>
+              <option>Prefer not to say</option>
+            </select>
+          </div>
+          <div class="q-group">
+            <label class="q-label">Where do you operate?</label>
+            <select name="location_type">
+              <option value="">Select one</option>
+              <option>Local only (one city/area)</option>
+              <option>Regional (multiple cities)</option>
+              <option>Statewide</option>
+              <option>National</option>
+              <option>Online / remote only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What do you sell more of?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt">
+              <input type="radio" name="product_service_split" value="Mostly products">
+              <span class="radio-dot"><span class="radio-inner"></span></span> Mostly products
+            </label>
+            <label class="radio-opt">
+              <input type="radio" name="product_service_split" value="Mostly services">
+              <span class="radio-dot"><span class="radio-inner"></span></span> Mostly services
+            </label>
+            <label class="radio-opt">
+              <input type="radio" name="product_service_split" value="Mix of both">
+              <span class="radio-dot"><span class="radio-inner"></span></span> Mix of both
+            </label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What makes your business different from competitors?</label>
+          <textarea name="differentiator" placeholder="What's your edge? Why do customers choose you?"></textarea>
+        </div>
+
+      </div>
+      <div class="step-nav">
+        <span></span>
+        <button class="btn btn-primary next-btn">Next: Your Team →</button>
+      </div>
+    </div>
+
+    <!-- ─── STEP 2: TEAM & WORKLOAD ─── -->
+    <div class="step-card" data-step="2">
+      <div class="step-header">
+        <div class="step-eyebrow">Section 02</div>
+        <h2>Your Team & Workload</h2>
+        <p>Help us understand who does what and where the time really goes.</p>
+      </div>
+      <div class="step-body">
+
+        <div class="two-col">
+          <div class="q-group">
+            <label class="q-label">How many full-time employees do you have?</label>
+            <select name="fulltime_employees">
+              <option value="">Select one</option>
+              <option>Just me</option>
+              <option>2–5</option>
+              <option>6–10</option>
+              <option>11–25</option>
+              <option>25+</option>
+            </select>
+          </div>
+          <div class="q-group">
+            <label class="q-label">Do you use contractors or freelancers?</label>
+            <select name="contractors">
+              <option value="">Select one</option>
+              <option>No</option>
+              <option>Occasionally</option>
+              <option>Regularly</option>
+              <option>Heavily</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What are the main roles on your team?</label>
+          <span class="q-hint">e.g. Sales, Admin, Delivery, Marketing, Customer Service</span>
+          <textarea name="team_roles" placeholder="List the roles and roughly what each person handles..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How many hours per week do YOU personally work?</label>
+          <select name="owner_hours">
+            <option value="">Select one</option>
+            <option>Under 30 hours</option>
+            <option>30–40 hours</option>
+            <option>40–50 hours</option>
+            <option>50–60 hours</option>
+            <option>60+ hours</option>
+          </select>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What tasks take up most of your personal time each week?</label>
+          <textarea name="owner_time_sinks" placeholder="Walk us through what a typical week looks like for you..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What tasks do you or your team do every single day without fail?</label>
+          <textarea name="daily_tasks" placeholder="e.g. Checking emails, updating a spreadsheet, calling clients, scheduling..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What tasks do you most wish you didn't have to deal with personally?</label>
+          <textarea name="disliked_tasks" placeholder="Be honest — what drains your energy the most?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Is your team currently stretched thin?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt"><input type="radio" name="team_capacity" value="Yes, very stretched"><span class="radio-dot"><span class="radio-inner"></span></span> Yes, very stretched</label>
+            <label class="radio-opt"><input type="radio" name="team_capacity" value="Somewhat"><span class="radio-dot"><span class="radio-inner"></span></span> Somewhat</label>
+            <label class="radio-opt"><input type="radio" name="team_capacity" value="No, capacity is fine"><span class="radio-dot"><span class="radio-inner"></span></span> No, we're fine</label>
+          </div>
+        </div>
+
+      </div>
+      <div class="step-nav">
+        <button class="btn btn-secondary back-btn">← Back</button>
+        <button class="btn btn-primary next-btn">Next: Sales & Leads →</button>
+      </div>
+    </div>
+
+    <!-- ─── STEP 3: SALES & LEADS ─── -->
+    <div class="step-card" data-step="3">
+      <div class="step-header">
+        <div class="step-eyebrow">Section 03</div>
+        <h2>Sales & Lead Generation</h2>
+        <p>How do people find you, and what happens once they do?</p>
+      </div>
+      <div class="step-body">
+
+        <div class="q-group">
+          <label class="q-label">How do most of your customers currently find you?</label>
+          <div class="check-group">
+            <label class="check-opt"><input type="checkbox" name="lead_sources" value="Word of mouth / referrals"><span class="check-box"><span class="check-mark">✓</span></span> Word of mouth / referrals</label>
+            <label class="check-opt"><input type="checkbox" name="lead_sources" value="Google Search"><span class="check-box"><span class="check-mark">✓</span></span> Google Search</label>
+            <label class="check-opt"><input type="checkbox" name="lead_sources" value="Social media"><span class="check-box"><span class="check-mark">✓</span></span> Social media</label>
+            <label class="check-opt"><input type="checkbox" name="lead_sources" value="Paid advertising"><span class="check-box"><span class="check-mark">✓</span></span> Paid advertising</label>
+            <label class="check-opt"><input type="checkbox" name="lead_sources" value="Repeat customers"><span class="check-box"><span class="check-mark">✓</span></span> Repeat customers</label>
+            <label class="check-opt"><input type="checkbox" name="lead_sources" value="Networking / in-person"><span class="check-box"><span class="check-mark">✓</span></span> Networking / in-person</label>
+            <label class="check-opt"><input type="checkbox" name="lead_sources" value="Other"><span class="check-box"><span class="check-mark">✓</span></span> Other</label>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="q-group">
+            <label class="q-label">Roughly how many new leads per month?</label>
+            <select name="monthly_leads">
+              <option value="">Select one</option>
+              <option>Less than 5</option>
+              <option>5–15</option>
+              <option>15–30</option>
+              <option>30–50</option>
+              <option>50–100</option>
+              <option>100+</option>
+            </select>
+          </div>
+          <div class="q-group">
+            <label class="q-label">What's your rough closing rate?</label>
+            <select name="closing_rate">
+              <option value="">Select one</option>
+              <option>Under 10%</option>
+              <option>10–25%</option>
+              <option>25–50%</option>
+              <option>50–75%</option>
+              <option>Over 75%</option>
+              <option>Not sure</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How do you currently follow up with leads?</label>
+          <span class="q-hint">Walk us through what happens after someone first reaches out or shows interest</span>
+          <textarea name="lead_followup" placeholder="e.g. I call them back, send a quote, follow up a few days later..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How quickly do you typically respond to a new inquiry?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt"><input type="radio" name="response_time" value="Within an hour"><span class="radio-dot"><span class="radio-inner"></span></span> Within an hour</label>
+            <label class="radio-opt"><input type="radio" name="response_time" value="Same day"><span class="radio-dot"><span class="radio-inner"></span></span> Same day</label>
+            <label class="radio-opt"><input type="radio" name="response_time" value="Next day"><span class="radio-dot"><span class="radio-inner"></span></span> Next day</label>
+            <label class="radio-opt"><input type="radio" name="response_time" value="A few days"><span class="radio-dot"><span class="radio-inner"></span></span> A few days</label>
+            <label class="radio-opt"><input type="radio" name="response_time" value="It varies a lot"><span class="radio-dot"><span class="radio-inner"></span></span> It varies</label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Do you use a CRM (customer relationship management) system?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt"><input type="radio" name="crm" value="Yes"><span class="radio-dot"><span class="radio-inner"></span></span> Yes</label>
+            <label class="radio-opt"><input type="radio" name="crm" value="No"><span class="radio-dot"><span class="radio-inner"></span></span> No</label>
+            <label class="radio-opt"><input type="radio" name="crm" value="I use spreadsheets instead"><span class="radio-dot"><span class="radio-inner"></span></span> Spreadsheets instead</label>
+            <label class="radio-opt"><input type="radio" name="crm" value="Not sure what that is"><span class="radio-dot"><span class="radio-inner"></span></span> Not sure what that is</label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What happens to a lead that goes cold or doesn't respond?</label>
+          <textarea name="cold_lead_process" placeholder="Do they fall through the cracks? Do you follow up again? After how long?"></textarea>
+        </div>
+
+        <div class="two-col">
+          <div class="q-group">
+            <label class="q-label">Average value of a new customer ($)</label>
+            <input type="text" name="avg_customer_value" placeholder="e.g. $500 one-time, $200/month">
+          </div>
+          <div class="q-group">
+            <label class="q-label">Do you have a referral or loyalty program?</label>
+            <select name="referral_program">
+              <option value="">Select one</option>
+              <option>Yes, a formal one</option>
+              <option>Informally — I ask for referrals sometimes</option>
+              <option>No</option>
+              <option>I'd like to have one</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How long is your typical sales cycle? (First contact to closed deal)</label>
+          <select name="sales_cycle">
+            <option value="">Select one</option>
+            <option>Same day / instant</option>
+            <option>A few days</option>
+            <option>1–2 weeks</option>
+            <option>2–4 weeks</option>
+            <option>1–3 months</option>
+            <option>3+ months</option>
+          </select>
+        </div>
+
+      </div>
+      <div class="step-nav">
+        <button class="btn btn-secondary back-btn">← Back</button>
+        <button class="btn btn-primary next-btn">Next: Customer Communication →</button>
+      </div>
+    </div>
+
+    <!-- ─── STEP 4: CUSTOMER COMMUNICATION ─── -->
+    <div class="step-card" data-step="4">
+      <div class="step-header">
+        <div class="step-eyebrow">Section 04</div>
+        <h2>Customer Communication</h2>
+        <p>How do you talk to customers — before, during, and after the sale?</p>
+      </div>
+      <div class="step-body">
+
+        <div class="q-group">
+          <label class="q-label">How do customers typically reach you?</label>
+          <div class="check-group">
+            <label class="check-opt"><input type="checkbox" name="contact_channels" value="Phone / text"><span class="check-box"><span class="check-mark">✓</span></span> Phone / text</label>
+            <label class="check-opt"><input type="checkbox" name="contact_channels" value="Email"><span class="check-box"><span class="check-mark">✓</span></span> Email</label>
+            <label class="check-opt"><input type="checkbox" name="contact_channels" value="Website contact form"><span class="check-box"><span class="check-mark">✓</span></span> Website contact form</label>
+            <label class="check-opt"><input type="checkbox" name="contact_channels" value="Social media DMs"><span class="check-box"><span class="check-mark">✓</span></span> Social media DMs</label>
+            <label class="check-opt"><input type="checkbox" name="contact_channels" value="Walk-in"><span class="check-box"><span class="check-mark">✓</span></span> Walk-in</label>
+            <label class="check-opt"><input type="checkbox" name="contact_channels" value="Online booking system"><span class="check-box"><span class="check-mark">✓</span></span> Online booking system</label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Do you have templates or scripts for common responses?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt"><input type="radio" name="templates" value="Yes, written templates"><span class="radio-dot"><span class="radio-inner"></span></span> Yes, written templates</label>
+            <label class="radio-opt"><input type="radio" name="templates" value="Kind of — I write similar things each time"><span class="radio-dot"><span class="radio-inner"></span></span> Kind of</label>
+            <label class="radio-opt"><input type="radio" name="templates" value="No, it's all custom each time"><span class="radio-dot"><span class="radio-inner"></span></span> No, all custom</label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How do you handle appointment or job scheduling?</label>
+          <textarea name="scheduling_process" placeholder="e.g. Phone calls, online calendar, paper calendar, texting back and forth..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Do you send reminders to customers before appointments?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt"><input type="radio" name="reminders" value="Yes, automatically"><span class="radio-dot"><span class="radio-inner"></span></span> Yes, automatically</label>
+            <label class="radio-opt"><input type="radio" name="reminders" value="Yes, manually"><span class="radio-dot"><span class="radio-inner"></span></span> Yes, manually</label>
+            <label class="radio-opt"><input type="radio" name="reminders" value="Sometimes"><span class="radio-dot"><span class="radio-inner"></span></span> Sometimes</label>
+            <label class="radio-opt"><input type="radio" name="reminders" value="No"><span class="radio-dot"><span class="radio-inner"></span></span> No</label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Do you follow up with customers after a job or purchase is complete?</label>
+          <textarea name="post_sale_followup" placeholder="e.g. Send a thank you, ask for a review, check in after 30 days..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How do you collect customer reviews or testimonials?</label>
+          <textarea name="review_collection" placeholder="Do you ask for them? How? Where do you direct customers?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How do you handle customer complaints or issues?</label>
+          <textarea name="complaint_handling" placeholder="Walk us through your process when something goes wrong..."></textarea>
+        </div>
+
+      </div>
+      <div class="step-nav">
+        <button class="btn btn-secondary back-btn">← Back</button>
+        <button class="btn btn-primary next-btn">Next: Daily Operations →</button>
+      </div>
+    </div>
+
+    <!-- ─── STEP 5: DAILY OPERATIONS ─── -->
+    <div class="step-card" data-step="5">
+      <div class="step-header">
+        <div class="step-eyebrow">Section 05</div>
+        <h2>Daily Operations & Admin</h2>
+        <p>The behind-the-scenes work — invoicing, tracking, paperwork, and everything in between.</p>
+      </div>
+      <div class="step-body">
+
+        <div class="q-group">
+          <label class="q-label">Walk us through a typical workday from start to finish</label>
+          <textarea name="typical_day" placeholder="What do you do first? What takes up most of the day? How does it end?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How do you handle invoicing and getting paid?</label>
+          <textarea name="invoicing_process" placeholder="e.g. QuickBooks, paper invoices, Square, cash only, how long does it take..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How long does it take to generate and send an invoice?</label>
+          <select name="invoice_time">
+            <option value="">Select one</option>
+            <option>Under 5 minutes</option>
+            <option>5–15 minutes</option>
+            <option>15–30 minutes</option>
+            <option>30+ minutes</option>
+            <option>I don't send invoices</option>
+          </select>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How do you track expenses and cash flow?</label>
+          <textarea name="expense_tracking" placeholder="Spreadsheet? Accounting software? Accountant? Nothing formal?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Do you have a project management system?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt"><input type="radio" name="project_management" value="Yes, dedicated software"><span class="radio-dot"><span class="radio-inner"></span></span> Yes, dedicated software</label>
+            <label class="radio-opt"><input type="radio" name="project_management" value="Spreadsheets or notes"><span class="radio-dot"><span class="radio-inner"></span></span> Spreadsheets / notes</label>
+            <label class="radio-opt"><input type="radio" name="project_management" value="It's mostly in my head"><span class="radio-dot"><span class="radio-inner"></span></span> In my head</label>
+            <label class="radio-opt"><input type="radio" name="project_management" value="No system"><span class="radio-dot"><span class="radio-inner"></span></span> No system</label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How do you onboard a new customer?</label>
+          <textarea name="onboarding" placeholder="What happens step by step from 'yes I want to work with you' to getting started?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Do you track inventory? (if applicable)</label>
+          <textarea name="inventory" placeholder="How do you know what you have in stock? How do you reorder?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What's the most tedious, repetitive admin task you deal with?</label>
+          <textarea name="most_tedious_task" placeholder="The thing you dread doing — what is it?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Are there any processes that feel broken or held together with duct tape?</label>
+          <textarea name="broken_processes" placeholder="Things that sort of work but you know are a mess underneath..."></textarea>
+        </div>
+
+      </div>
+      <div class="step-nav">
+        <button class="btn btn-secondary back-btn">← Back</button>
+        <button class="btn btn-primary next-btn">Next: Marketing →</button>
+      </div>
+    </div>
+
+    <!-- ─── STEP 6: MARKETING ─── -->
+    <div class="step-card" data-step="6">
+      <div class="step-header">
+        <div class="step-eyebrow">Section 06</div>
+        <h2>Marketing</h2>
+        <p>How do you put yourself in front of potential customers?</p>
+      </div>
+      <div class="step-body">
+
+        <div class="q-group">
+          <label class="q-label">Do you run any paid advertising?</label>
+          <div class="check-group">
+            <label class="check-opt"><input type="checkbox" name="paid_ads" value="Google Ads"><span class="check-box"><span class="check-mark">✓</span></span> Google Ads</label>
+            <label class="check-opt"><input type="checkbox" name="paid_ads" value="Facebook / Instagram Ads"><span class="check-box"><span class="check-mark">✓</span></span> Facebook / Instagram Ads</label>
+            <label class="check-opt"><input type="checkbox" name="paid_ads" value="Yelp Ads"><span class="check-box"><span class="check-mark">✓</span></span> Yelp Ads</label>
+            <label class="check-opt"><input type="checkbox" name="paid_ads" value="Other paid platforms"><span class="check-box"><span class="check-mark">✓</span></span> Other paid platforms</label>
+            <label class="check-opt"><input type="checkbox" name="paid_ads" value="No paid ads"><span class="check-box"><span class="check-mark">✓</span></span> No paid ads</label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How do you manage social media?</label>
+          <textarea name="social_media" placeholder="Which platforms? How often do you post? Who runs it? Does it bring in customers?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Do you have an email list or newsletter?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt"><input type="radio" name="email_list" value="Yes, active"><span class="radio-dot"><span class="radio-inner"></span></span> Yes, active</label>
+            <label class="radio-opt"><input type="radio" name="email_list" value="Yes but rarely use it"><span class="radio-dot"><span class="radio-inner"></span></span> Yes but rarely use it</label>
+            <label class="radio-opt"><input type="radio" name="email_list" value="No"><span class="radio-dot"><span class="radio-inner"></span></span> No</label>
+            <label class="radio-opt"><input type="radio" name="email_list" value="Would like one"><span class="radio-dot"><span class="radio-inner"></span></span> Would like one</label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How do you stay in touch with past customers?</label>
+          <textarea name="past_customer_retention" placeholder="Do you re-engage them? How? Or do they just come back on their own?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What marketing have you tried that felt like a waste of time or money?</label>
+          <textarea name="marketing_failures" placeholder="Be honest — what didn't work?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What marketing has worked best for you?</label>
+          <textarea name="marketing_wins" placeholder="Where do your best customers actually come from?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Do you have a Google Business Profile set up?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt"><input type="radio" name="google_business" value="Yes, fully set up"><span class="radio-dot"><span class="radio-inner"></span></span> Yes, fully set up</label>
+            <label class="radio-opt"><input type="radio" name="google_business" value="Yes but basic"><span class="radio-dot"><span class="radio-inner"></span></span> Yes but basic</label>
+            <label class="radio-opt"><input type="radio" name="google_business" value="No"><span class="radio-dot"><span class="radio-inner"></span></span> No</label>
+            <label class="radio-opt"><input type="radio" name="google_business" value="Not sure"><span class="radio-dot"><span class="radio-inner"></span></span> Not sure</label>
+          </div>
+        </div>
+
+      </div>
+      <div class="step-nav">
+        <button class="btn btn-secondary back-btn">← Back</button>
+        <button class="btn btn-primary next-btn">Next: Tools & Software →</button>
+      </div>
+    </div>
+
+    <!-- ─── STEP 7: TOOLS & SOFTWARE ─── -->
+    <div class="step-card" data-step="7">
+      <div class="step-header">
+        <div class="step-eyebrow">Section 07</div>
+        <h2>Tools & Software</h2>
+        <p>What tech are you already using? This helps us build on what's working instead of starting from scratch.</p>
+      </div>
+      <div class="step-body">
+
+        <div class="q-group">
+          <label class="q-label">List all the software and tools your business currently uses</label>
+          <span class="q-hint">Include everything — accounting, scheduling, communication, project management, design, POS, etc.</span>
+          <textarea name="current_tools" placeholder="e.g. QuickBooks, Google Workspace, Square, Calendly, Instagram, Slack, Excel..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Roughly how much do you spend on software per month?</label>
+          <select name="software_spend">
+            <option value="">Select one</option>
+            <option>Under $50/month</option>
+            <option>$50–$150/month</option>
+            <option>$150–$500/month</option>
+            <option>$500–$1,000/month</option>
+            <option>Over $1,000/month</option>
+            <option>Not sure</option>
+          </select>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Are there tools you pay for but barely use?</label>
+          <textarea name="underused_tools" placeholder="Software you're subscribed to but it's collecting dust..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Are there tools you wish worked better together?</label>
+          <textarea name="integration_gaps" placeholder="e.g. I wish my scheduling software talked to my invoicing software..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Do you use any AI tools currently?</label>
+          <div class="check-group">
+            <label class="check-opt"><input type="checkbox" name="current_ai_tools" value="ChatGPT / Claude"><span class="check-box"><span class="check-mark">✓</span></span> ChatGPT / Claude</label>
+            <label class="check-opt"><input type="checkbox" name="current_ai_tools" value="Grammarly or writing tools"><span class="check-box"><span class="check-mark">✓</span></span> Grammarly or writing tools</label>
+            <label class="check-opt"><input type="checkbox" name="current_ai_tools" value="AI image generation"><span class="check-box"><span class="check-mark">✓</span></span> AI image generation</label>
+            <label class="check-opt"><input type="checkbox" name="current_ai_tools" value="AI built into other software"><span class="check-box"><span class="check-mark">✓</span></span> AI built into other software</label>
+            <label class="check-opt"><input type="checkbox" name="current_ai_tools" value="None yet"><span class="check-box"><span class="check-mark">✓</span></span> None yet</label>
+          </div>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What have you tried to automate or improve before that didn't work?</label>
+          <textarea name="failed_automation" placeholder="Tools you tried, systems you set up, things that fell apart — what happened?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How comfortable is your team with learning new software?</label>
+          <div class="radio-group inline">
+            <label class="radio-opt"><input type="radio" name="tech_comfort" value="Very comfortable"><span class="radio-dot"><span class="radio-inner"></span></span> Very comfortable</label>
+            <label class="radio-opt"><input type="radio" name="tech_comfort" value="Somewhat comfortable"><span class="radio-dot"><span class="radio-inner"></span></span> Somewhat</label>
+            <label class="radio-opt"><input type="radio" name="tech_comfort" value="Resistant to change"><span class="radio-dot"><span class="radio-inner"></span></span> Resistant to change</label>
+            <label class="radio-opt"><input type="radio" name="tech_comfort" value="It's just me"><span class="radio-dot"><span class="radio-inner"></span></span> It's just me</label>
+          </div>
+        </div>
+
+      </div>
+      <div class="step-nav">
+        <button class="btn btn-secondary back-btn">← Back</button>
+        <button class="btn btn-primary next-btn">Next: Goals & Pain Points →</button>
+      </div>
+    </div>
+
+    <!-- ─── STEP 8: GOALS & PAIN POINTS ─── -->
+    <div class="step-card" data-step="8">
+      <div class="step-header">
+        <div class="step-eyebrow">Section 08 — Final Section</div>
+        <h2>Goals & Pain Points</h2>
+        <p>This is the most important section. Be as candid as possible — there are no wrong answers.</p>
+      </div>
+      <div class="step-body">
+
+        <div class="q-group">
+          <label class="q-label">What is your single biggest operational headache right now?</label>
+          <textarea name="biggest_headache" placeholder="If you could fix one thing tomorrow, what would it be?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">If you could wave a magic wand and fix one thing in your business, what would it be?</label>
+          <textarea name="magic_wand" placeholder="Don't overthink it — what first comes to mind?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What's your revenue goal for the next 12 months?</label>
+          <input type="text" name="revenue_goal" placeholder="e.g. $300K, double what we made last year...">
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What's the main thing standing between you and that goal?</label>
+          <textarea name="goal_obstacle" placeholder="Time? Leads? Staff? Systems? Money? Be specific..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What would you do with 10 extra hours per week?</label>
+          <textarea name="extra_hours" placeholder="Grow the business? Take on more clients? Actually have a life?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Are there tasks or processes you know need improving but haven't gotten around to fixing?</label>
+          <textarea name="known_issues" placeholder="The stuff you've been meaning to deal with for months..."></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What's your approximate budget for tools and improvements per month?</label>
+          <select name="improvement_budget">
+            <option value="">Select one</option>
+            <option>Under $200/month</option>
+            <option>$200–$500/month</option>
+            <option>$500–$1,000/month</option>
+            <option>$1,000–$2,500/month</option>
+            <option>$2,500+/month</option>
+            <option>Flexible — depends on the ROI</option>
+            <option>Not sure yet</option>
+          </select>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">What are you most excited about improving in your business?</label>
+          <textarea name="most_excited" placeholder="What area do you see the most potential in?"></textarea>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">How did you hear about Brix?</label>
+          <select name="referral_source">
+            <option value="">Select one</option>
+            <option>Google Search</option>
+            <option>Referral from someone I know</option>
+            <option>Social media</option>
+            <option>LinkedIn</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div class="q-group">
+          <label class="q-label">Anything else you want us to know before we dive in?</label>
+          <textarea name="anything_else" placeholder="Context, concerns, specific requests, things we should know — anything goes..."></textarea>
+        </div>
+
+        <div class="q-divider"></div>
+
+        <div class="q-group">
+          <label class="q-label">Your email address <span style="color:var(--cyan);font-size:12px;">(so we can send your audit)</span></label>
+          <input type="email" name="email" placeholder="your@email.com">
+        </div>
+
+      </div>
+      <div class="step-nav">
+        <button class="btn btn-secondary back-btn">← Back</button>
+        <button class="btn btn-primary" id="submitBtn">Submit Questionnaire →</button>
+      </div>
+    </div>
+
+    <!-- SUCCESS SCREEN -->
+    <div class="success-screen" id="successScreen">
+      <div class="success-icon">✦</div>
+      <h2>We've got everything<br>we need.</h2>
+      <p>Thank you for taking the time to fill this out. We'll personally review your answers and deliver your AI Profit Leak Audit within <strong style="color:var(--text);">5 business days</strong>. Keep an eye on your inbox.</p>
+      <p style="margin-top:16px;">Questions in the meantime? Email us at <a href="mailto:Brix1email@gmail.com">Brix1email@gmail.com</a></p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const FORMSPREE_ENDPOINT = "https://formspree.io/f/YOUR_FORM_ID"; // ← Replace this
+
+  const steps = document.querySelectorAll('.step-card');
+  const progressBar = document.getElementById('progressBar');
+  const stepCount = document.getElementById('stepCount');
+  const sectionName = document.getElementById('sectionName');
+  const totalSteps = steps.length;
+
+  const sectionNames = [
+    "About Your Business",
+    "Your Team & Workload",
+    "Sales & Lead Generation",
+    "Customer Communication",
+    "Daily Operations & Admin",
+    "Marketing",
+    "Tools & Software",
+    "Goals & Pain Points"
+  ];
+
+  let currentStep = 0;
+  const formData = {};
+
+  function collectStep(stepIndex) {
+    const card = steps[stepIndex];
+    // Text/email/number inputs
+    card.querySelectorAll('input[type="text"], input[type="email"], input[type="number"], textarea, select').forEach(el => {
+      if (el.name && el.value.trim()) formData[el.name] = el.value.trim();
+    });
+    // Radio buttons
+    card.querySelectorAll('input[type="radio"]').forEach(el => {
+      if (el.checked) formData[el.name] = el.value;
+    });
+    // Checkboxes — collect all checked as comma-separated
+    const checkGroups = {};
+    card.querySelectorAll('input[type="checkbox"]').forEach(el => {
+      if (!checkGroups[el.name]) checkGroups[el.name] = [];
+      if (el.checked) checkGroups[el.name].push(el.value);
+    });
+    Object.entries(checkGroups).forEach(([k, v]) => {
+      if (v.length) formData[k] = v.join(', ');
+    });
+  }
+
+  function goToStep(index) {
+    steps[currentStep].classList.remove('active');
+    currentStep = index;
+    steps[currentStep].classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const pct = ((currentStep + 1) / totalSteps) * 100;
+    progressBar.style.width = pct + '%';
+    stepCount.textContent = `Section ${currentStep + 1} of ${totalSteps}`;
+    sectionName.textContent = sectionNames[currentStep];
+  }
+
+  // Next buttons
+  document.querySelectorAll('.next-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      collectStep(currentStep);
+      if (currentStep < totalSteps - 1) goToStep(currentStep + 1);
+    });
+  });
+
+  // Back buttons
+  document.querySelectorAll('.back-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (currentStep > 0) goToStep(currentStep - 1);
+    });
+  });
+
+  // Radio & checkbox interactivity
+  document.querySelectorAll('.radio-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const radio = opt.querySelector('input[type="radio"]');
+      const name = radio.name;
+      document.querySelectorAll(`.radio-opt input[name="${name}"]`).forEach(r => r.closest('.radio-opt').classList.remove('selected'));
+      radio.checked = true;
+      opt.classList.add('selected');
+    });
+  });
+
+  document.querySelectorAll('.check-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const cb = opt.querySelector('input[type="checkbox"]');
+      cb.checked = !cb.checked;
+      opt.classList.toggle('selected', cb.checked);
+    });
+  });
+
+  // Submit
+  document.getElementById('submitBtn').addEventListener('click', async () => {
+    collectStep(currentStep);
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.classList.add('btn-loading');
+    btn.textContent = 'Sending...';
+
+    // Format data for readable email
+    const formatted = {};
+    Object.entries(formData).forEach(([k, v]) => {
+      const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      formatted[label] = v;
+    });
+    formatted['_subject'] = `New Brix Audit Questionnaire — ${formData.business_name || formData.owner_name || 'Unknown Business'}`;
+    formatted['_replyto'] = formData.email || '';
+
+    try {
+      const res = await fetch(FORMSPREE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(formatted)
+      });
+      if (res.ok) {
+        steps[currentStep].classList.remove('active');
+        document.getElementById('successScreen').style.display = 'block';
+        progressBar.style.width = '100%';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        alert('Something went wrong. Please email us directly at Brix1email@gmail.com');
+        btn.disabled = false;
+        btn.classList.remove('btn-loading');
+        btn.textContent = 'Submit Questionnaire →';
+      }
+    } catch {
+      alert('Something went wrong. Please email us directly at Brix1email@gmail.com');
+      btn.disabled = false;
+      btn.classList.remove('btn-loading');
+      btn.textContent = 'Submit Questionnaire →';
+    }
+  });
+</script>
+</body>
+</html>
